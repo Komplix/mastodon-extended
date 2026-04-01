@@ -27,15 +27,22 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Get Remote Mastodon Version and Digest
-        id: remote
+      - name: Get Latest Official Release Tag
+        id: mastodon
         run: |
-          # Pull official image to get metadata
-          docker pull tootsuite/mastodon:latest
-          # Extract the real version tag (e.g., v4.5.1) from image labels
-          VERSION=$(docker inspect --format '{{ index .Config.Labels "org.opencontainers.image.version" }}' tootsuite/mastodon:latest)
+          # Fetch the latest release tag name from Mastodon's GitHub API
+          VERSION=$(curl -s https://github.com | jq -r .tag_name)
+          
+          # Check if VERSION is valid (not null or empty)
+          if [ "$VERSION" == "null" ] || [ -z "$VERSION" ]; then
+            echo "Error: Could not fetch latest release tag"
+            exit 1
+          fi
+          
           echo "tag=$VERSION" >> $GITHUB_OUTPUT
-          # Get unique digest for comparison
+          
+          # Pull official image to get its unique digest for comparison
+          docker pull tootsuite/mastodon:latest
           DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' tootsuite/mastodon:latest)
           echo "official_digest=$DIGEST" >> $GITHUB_OUTPUT
 
@@ -43,14 +50,14 @@ jobs:
         id: local
         continue-on-error: true
         run: |
-          # Pull my custom image to get its unique digest
+          # Pull my custom image to compare it with the official one
           docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
           DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest)
           echo "custom_digest=$DIGEST" >> $GITHUB_OUTPUT
 
       - name: Build and push image
         # Build if digests don't match OR if triggered manually
-        if: steps.remote.outputs.official_digest != steps.local.outputs.custom_digest || github.event_name == 'workflow_dispatch'
+        if: steps.mastodon.outputs.official_digest != steps.local.outputs.custom_digest || github.event_name == 'workflow_dispatch'
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -58,4 +65,4 @@ jobs:
           # Tags the image with 'latest' AND the specific version number
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.remote.outputs.tag }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.mastodon.outputs.tag }}
