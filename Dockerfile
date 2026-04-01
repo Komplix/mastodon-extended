@@ -13,3 +13,5 @@ RUN sed -i 's/MAX_CHARS = 500/MAX_CHARS = 3000/g' /opt/mastodon/app/validators/s
 
 # Switch back to the standard mastodon user for security
 USER mastodon
+
+

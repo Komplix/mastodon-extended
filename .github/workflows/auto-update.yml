@@ -7,7 +7,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  IMAGE_NAME: komplix/mastodon-extended
 
 jobs:
   check-and-build:
@@ -20,36 +20,36 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Get Remote Docker Image Digest
-        id: remote
-        run: |
-          # Get the digest of the official Mastodon image
-          DIGEST=$(docker pull tootsuite/mastodon:latest | grep Digest | awk '{print $2}')
-          echo "official_digest=$DIGEST" >> $GITHUB_OUTPUT
-
-      - name: Get Local Docker Image Digest
-        id: local
-        continue-on-error: true
-        run: |
-          # Get the digest of my current custom image
-          # If it doesn't exist yet (i.e first run), this will fail but continue due to continue-on-error
-          DIGEST=$(docker pull ghcr.io/${{ env.IMAGE_NAME }}:latest | grep Digest | awk '{print $2}')
-          echo "custom_digest=$DIGEST" >> $GITHUB_OUTPUT
-
       - name: Log in to GHCR
-        # Build if digests don't match OR if it's a manual trigger
-        if: steps.remote.outputs.official_digest != steps.local.outputs.custom_digest || github.event_name == 'workflow_dispatch'
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Get Remote Docker Image Digest
+        id: remote
+        run: |
+          # Pull official image to get its unique digest
+          docker pull tootsuite/mastodon:latest
+          DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' tootsuite/mastodon:latest)
+          echo "official_digest=$DIGEST" >> $GITHUB_OUTPUT
+
+      - name: Get Local Docker Image Digest
+        id: local
+        continue-on-error: true
+        run: |
+          # Pull my  custom image to get its unique digest
+          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest)
+          echo "custom_digest=$DIGEST" >> $GITHUB_OUTPUT
+
       - name: Build and push image
+        # Build if digests don't match OR if triggered manually
         if: steps.remote.outputs.official_digest != steps.local.outputs.custom_digest || github.event_name == 'workflow_dispatch'
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
           tags: |
-            ghcr.io/${{ env.IMAGE_NAME }}:latest
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
