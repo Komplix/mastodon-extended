@@ -11,24 +11,28 @@ This repository provides a custom-tailored Docker image of **Mastodon** with an 
 
 ## How to Use (Docker / Podman)
 
-To use this extended version, update your `docker-compose.yml` to point to this container registry instead of the official one:
+To enable extended character limits, update your `docker-compose.yml` etc. by replacing the official image with this custom build.
 
-```yaml
-services:
-  web:
-    image: ghcr.io/komplix/mastodon-extended:latest
-    # ... keep the rest of your configuration as is
-  
-  sidekiq:
-    image: ghcr.io/komplix/mastodon-extended:latest
-    # ...
-    
-  streaming:
-    image: ghcr.io/komplix/mastodon-extended:latest
-    # ...
-```
+### Update Image Tags
+Replace all occurrences of the main image (example for version `v4.5.8`):
+
+**From:**
+`docker.io/tootsuite/mastodon:v4.5.8`
+
+**To:**
+`ghcr.io/komplix/mastodon-extended:v4.5.8`
+
+### Important: Keep Streaming Image
+**Do not change** the streaming image. It should remain the official one, as it does not require the character limit patch:
+`docker.io/tootsuite/mastodon-streaming:v4.5.8`
+
+### Reverting Changes
+If you encounter any issues, you can switch back to the official image at any time.
+*   **Existing posts** with up to 3,000 characters will remain intact and visible.
+*   **New posts** will simply be restricted to the default 500-character limit again.
+
 ## Manual Pull
-```docker pull ghcr.io/komplix/mastodon-extended:latest```
+```docker pull ghcr.io/komplix/mastodon-extended:v4.5.8```
 
 ## Technical Implementation
 The build process patches the validation logic during the Docker build stage using a sed command:
