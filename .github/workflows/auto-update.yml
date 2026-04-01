@@ -31,7 +31,7 @@ jobs:
         id: mastodon
         run: |
           # Fetch the latest release tag name from Mastodon's GitHub API
-          VERSION=$(curl -s https://github.com | jq -r .tag_name)
+          VERSION=$(curl -s https://api.github.com/repos/mastodon/mastodon/releases | jq -r .tag_name)
           
           # Check if VERSION is valid (not null or empty)
           if [ "$VERSION" == "null" ] || [ -z "$VERSION" ]; then
