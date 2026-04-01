@@ -27,11 +27,15 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Get Remote Docker Image Digest
+      - name: Get Remote Mastodon Version and Digest
         id: remote
         run: |
-          # Pull official image to get its unique digest
+          # Pull official image to get metadata
           docker pull tootsuite/mastodon:latest
+          # Extract the real version tag (e.g., v4.5.1) from image labels
+          VERSION=$(docker inspect --format '{{ index .Config.Labels "org.opencontainers.image.version" }}' tootsuite/mastodon:latest)
+          echo "tag=$VERSION" >> $GITHUB_OUTPUT
+          # Get unique digest for comparison
           DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' tootsuite/mastodon:latest)
           echo "official_digest=$DIGEST" >> $GITHUB_OUTPUT
 
@@ -39,7 +43,7 @@ jobs:
         id: local
         continue-on-error: true
         run: |
-          # Pull my  custom image to get its unique digest
+          # Pull my custom image to get its unique digest
           docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
           DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest)
           echo "custom_digest=$DIGEST" >> $GITHUB_OUTPUT
@@ -51,5 +55,7 @@ jobs:
         with:
           context: .
           push: true
+          # Tags the image with 'latest' AND the specific version number
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.remote.outputs.tag }}

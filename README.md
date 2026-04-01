@@ -1,3 +1,5 @@
+[![Auto-Update Mastodon Extended](https://github.com/Komplix/mastodon-extended/actions/workflows/auto-update.yml/badge.svg)](https://github.com/Komplix/mastodon-extended/actions/workflows/auto-update.yml)
+
 # Mastodon Extended
 
 This repository provides a custom-tailored Docker image of **Mastodon** with an increased character limit. Instead of the default 500 characters, this version allows up to **3,000 characters** per status update.
